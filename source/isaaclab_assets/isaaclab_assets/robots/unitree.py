@@ -457,6 +457,7 @@ G1_CUSTOM_CFG = ArticulationCfg(
         ),
         "feet": DCMotorCfg(
             effort_limit=20,
+            velocity_limit=100.0,
             joint_names_expr=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"],
             stiffness=20.0,
             damping=2.0,
