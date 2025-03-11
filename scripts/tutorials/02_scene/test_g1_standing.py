@@ -10,7 +10,7 @@ from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
 from isaaclab.sim import SimulationContext
 from isaaclab.utils import configclass
 
-from isaaclab_assets import G1_CFG
+from isaaclab_assets import G1_CFG, G1_CUSTOM_CFG
 
 from isaacsim.core.api.robots.robot_view import RobotView
 
@@ -19,7 +19,7 @@ from isaacsim.core.api.robots.robot_view import RobotView
 class G1SceneCfg(InteractiveSceneCfg):
     ground = AssetBaseCfg(prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg())
     dome_light = AssetBaseCfg(prim_path="/World/Light", spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75)))
-    robot : ArticulationCfg = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    robot : ArticulationCfg = G1_CUSTOM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
 
 def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
@@ -39,6 +39,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
             scene.reset()
             print("Resetting scene")
         default_pos = robot.data.default_joint_pos.clone()
+        print(default_pos.shape)
         robot.set_joint_position_target(default_pos)
         scene.write_data_to_sim()
         sim.step()
