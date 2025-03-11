@@ -104,3 +104,18 @@ def track_ang_vel_z_world_exp(
     asset = env.scene[asset_cfg.name]
     ang_vel_error = torch.square(env.command_manager.get_command(command_name)[:, 2] - asset.data.root_ang_vel_w[:, 2])
     return torch.exp(-ang_vel_error / std**2)
+    
+def feet_contact(env, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    """If a single contact occurred at least once in the last 0.2 seconds, the reward is granted, otherwise the reward is 0.
+    
+    This function checks the contact sensor for any contact events in the last 0.2 seconds for the specified body parts.
+    If at least one contact occurred, a reward of 1.0 is returned; otherwise, 0 is returned.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    # Compute contact events over the last 0.2 seconds.
+    first_contact = contact_sensor.compute_first_contact(0.2)[:, sensor_cfg.body_ids]
+    # Check if at least one contact occurred for each sample.
+    contact_occurred = torch.sum(first_contact, dim=1) > 0
+    # Return reward (1.0 if contact occurred, else 0)
+    reward = contact_occurred.float()
+    return reward
