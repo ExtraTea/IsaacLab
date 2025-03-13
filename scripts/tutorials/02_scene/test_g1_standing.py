@@ -33,24 +33,22 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
             root_state[:, :3] += scene.env_origins
             robot.write_root_pose_to_sim(root_state[:, :7])
             robot.write_root_velocity_to_sim(root_state[:, 7:])
-            robot_view = RobotView(prim_paths_expr="/World/envs/env_.*/Robot")
-            # print(robot_view.initialize())
-            # print(robot_view.get_jacobians().shape)
             scene.reset()
+            pos = torch.rand(16, 37) * 2 - 1
+            robot.set_joint_position_target(pos)
             print("Resetting scene")
         default_pos = robot.data.default_joint_pos.clone()
         print(default_pos.shape)
-        robot.set_joint_position_target(default_pos)
         scene.write_data_to_sim()
         sim.step()
         count += 1
         scene.update(sim_dt)
 
 def main():
-    sim_cfg = sim_utils.SimulationCfg(device="cpu")
+    sim_cfg = sim_utils.SimulationCfg(device="cuda:0")
     sim = SimulationContext(sim_cfg)
     sim.set_camera_view([2.5, 0.0, 4.0], [0.0, 0.0, 2.0])
-    scene_cfg = G1SceneCfg(num_envs=1, env_spacing=0.0)
+    scene_cfg = G1SceneCfg(num_envs=16, env_spacing=2.0)
     scene = InteractiveScene(scene_cfg)
     sim.reset()
     run_simulator(sim, scene)
