@@ -478,7 +478,7 @@ G1_CUSTOM_CFG = ArticulationCfg(
             joint_names_expr=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"],
             effort_limit=50,          # 研究値: 50 N·m (元は20)
             velocity_limit=37.0,      # 研究値: 37 rad/s (元は100.0)
-            stiffness=20.0,           # 変更なし
+            stiffness=10.0,           # 変更なし
             damping=2.0,              # 変更なし
             armature=0.01,            # 研究値: 0.01
             friction=0.1,             # 研究値: 0.1 (元は0.0)
@@ -518,16 +518,29 @@ G1_CUSTOM_CFG = ArticulationCfg(
                 ".*_shoulder_yaw_joint": 37,     # 研究値: 37 rad/s
                 ".*_elbow_pitch_joint": 37,      # 研究値: 37 rad/s
                 ".*_elbow_roll_joint": 37,       # 研究値: 37 rad/s
-                ".*_five_joint": 2,                # Finger joints は情報なし
-                ".*_three_joint": 2,               # Finger joints は情報なし
-                ".*_six_joint": 2 ,                # Finger joints は情報なし
-                ".*_four_joint": 2,                # Finger joints は情報なし
-                ".*_zero_joint": 2,                # Finger joints は情報なし
-                ".*_one_joint": 2,                 # Finger joints は情報なし
-                ".*_two_joint": 2,                 # Finger joints は情報なし
+                ".*_five_joint": 0.2,                # Finger joints は情報なし
+                ".*_three_joint": 0.2,               # Finger joints は情報なし
+                ".*_six_joint": 0.2 ,                # Finger joints は情報なし
+                ".*_four_joint": 0.2,                # Finger joints は情報なし
+                ".*_zero_joint": 0.2,                # Finger joints は情報なし
+                ".*_one_joint": 0.2,                 # Finger joints は情報なし
+                ".*_two_joint": 0.2,                 # Finger joints は情報なし
             },
-            stiffness=40.0,  # 変更なし
-            damping=15.0,    # 変更なし
+            stiffness={  # 肩・肘関節は研究情報に基づいて更新、その他は変更なし
+                ".*_shoulder_pitch_joint": 20,   
+                ".*_shoulder_roll_joint": 20,    
+                ".*_shoulder_yaw_joint": 20,    
+                ".*_elbow_pitch_joint": 20,      
+                ".*_elbow_roll_joint": 20,       
+                ".*_five_joint": 1,           
+                ".*_three_joint": 1,            
+                ".*_six_joint": 1 ,               
+                ".*_four_joint": 1,              
+                ".*_zero_joint": 1,               
+                ".*_one_joint": 1,                 
+                ".*_two_joint": 1,                 
+            },
+            damping=3.0,    # 変更なし
             armature={
                 ".*_shoulder_.*": 0.01,  # 研究値: 0.01
                 ".*_elbow_.*": 0.01,     # 研究値: 0.01
