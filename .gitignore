@@ -21,6 +21,7 @@
 **/.pytest_cache/
 **/*.pyc
 **/*.pb
+.tensorboard/
 
 # Docker/Singularity
 **/*.sif
