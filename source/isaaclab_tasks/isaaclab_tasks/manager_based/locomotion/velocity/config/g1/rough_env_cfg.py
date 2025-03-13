@@ -36,7 +36,17 @@ class G1Rewards(RewardsCfg):
         func = mdp.feet_contact, 
         weight = 1.0,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
+            "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
+        }
+    )
+    pelvis_height = RewTerm(
+        func = mdp.track_height_diff,
+        weight = 0.5,
+        params = {
+            "link_name" : "pelvis",
+            "height" : 0.6,
+            "std" : 20.517 #height = 0.55のときに報酬が95%になるように設定
         }
     )
 

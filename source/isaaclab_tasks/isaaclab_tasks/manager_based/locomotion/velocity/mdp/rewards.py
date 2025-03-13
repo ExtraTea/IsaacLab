@@ -10,6 +10,7 @@ specify the reward function and its parameters.
 """
 
 from __future__ import annotations
+import math
 
 import torch
 from typing import TYPE_CHECKING
@@ -105,17 +106,47 @@ def track_ang_vel_z_world_exp(
     ang_vel_error = torch.square(env.command_manager.get_command(command_name)[:, 2] - asset.data.root_ang_vel_w[:, 2])
     return torch.exp(-ang_vel_error / std**2)
     
-def feet_contact(env, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
-    """If a single contact occurred at least once in the last 0.2 seconds, the reward is granted, otherwise the reward is 0.
-    
-    This function checks the contact sensor for any contact events in the last 0.2 seconds for the specified body parts.
-    If at least one contact occurred, a reward of 1.0 is returned; otherwise, 0 is returned.
+def feet_contact(env, right_sensor_cfg: SceneEntityCfg, left_sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """
-    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-    # Compute contact events over the last 0.2 seconds.
-    first_contact = contact_sensor.compute_first_contact(0.2)[:, sensor_cfg.body_ids]
-    # Check if at least one contact occurred for each sample.
-    contact_occurred = torch.sum(first_contact, dim=1) > 0
-    # Return reward (1.0 if contact occurred, else 0)
+    Compute a reward based on exclusive contact events detected by the right and left contact sensors.
+
+    This function checks the specified contact sensors for events in the last 0.2 seconds on the designated body parts.
+    It uses each sensor's compute_first_contact(0.2) method and then selects data corresponding to the body_ids provided 
+    in the sensor configuration. The function then determines whether exactly one sensor (either right or left) registered 
+    at least one contact event during that period:
+      - If exactly one sensor reports a contact (i.e. the XOR of the two sensor signals is true), the function returns 
+        a reward of 1.0.
+      - If both sensors or neither sensor report contact, the reward is 0.
+    
+    Parameters:
+        env: The simulation environment containing the scene and sensors.
+        right_sensor_cfg (SceneEntityCfg): Configuration for the right contact sensor, including sensor name and body_ids.
+        left_sensor_cfg (SceneEntityCfg): Configuration for the left contact sensor, including sensor name and body_ids.
+        (Both configurations specify which sensor to use and the body parts to consider for contact events.)
+
+    Returns:
+        torch.Tensor: A tensor of shape (n_envs,) containing the reward for each environment; 1.0 if exactly one 
+                      sensor detected contact within the last 0.2 seconds, 0 otherwise.
+    """
+    right_contact_sensor: ContactSensor = env.scene.sensors[right_sensor_cfg.name]
+    left_contact_sensor: ContactSensor = env.scene.sensors[left_sensor_cfg.name]
+    # Compute contact events over the last 0.2 seconds for specified body_ids.
+    right_first_contact = right_contact_sensor.compute_first_contact(0.2)[:, right_sensor_cfg.body_ids]
+    left_first_contact = left_contact_sensor.compute_first_contact(0.2)[:, left_sensor_cfg.body_ids]
+    # Determine if exactly one sensor detected any contact event (XOR).
+    contact_occurred = (right_first_contact.sum(dim=1) > 0).int() ^ (left_first_contact.sum(dim=1) > 0).int()
+    # Return reward: 1.0 if exactly one contact occurred, else 0.
     reward = contact_occurred.float()
     return reward
+
+
+def track_height_diff(
+        env, link_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), height: float = 0.0, std: float = 1.0
+) -> torch.Tensor:
+    """Reward tracking of height difference between the specified link and the specified height using exponential kernel."""
+    # extract the used quantities (to enable type-hinting)
+    asset = env.scene[asset_cfg.name]
+    link_id = asset.find_bodies(link_name)
+    link_height = asset.data.com_pos_b[:,(link_id[0][0]),2]
+    height_diff_sq = torch.square(link_height - height)
+    return torch.exp(-height_diff_sq * std)
