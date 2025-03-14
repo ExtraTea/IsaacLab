@@ -20,16 +20,21 @@ from isaaclab_assets import G1_CUSTOM_CFG  # isort: skip
 class G1Rewards(RewardsCfg):
     """Reward terms for the MDP."""
 
-    # termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-20.0)
     track_lin_vel_xy_exp = RewTerm(
-        func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=1.5,
+        func=mdp.track_lin_vel_xy_world_exp,
+        weight=0.5,
         params={"command_name": "base_velocity", "std": 0.5},
     )
+    # track_lin_vel_xy_exp_relative = RewTerm(
+    #     func=mdp.track_lin_vel_xy_yaw_frame_exp,
+    #     weight=0.5,
+    #     params={"command_name": "base_velocity", "std": 0.5},
+    # )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp, 
         weight=2.0,
-        params={"command_name": "base_velocity", "std": 0.5}
+        params={"command_name": "base_velocity", "std": 0.7}
     )
 
     feet_contact = RewTerm(
@@ -75,11 +80,16 @@ class G1Rewards(RewardsCfg):
     #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
     # )
     # # Penalize deviation from default of the joints that are not essential for locomotion
-    # joint_deviation_hip = RewTerm(
-    #     func=mdp.joint_deviation_l1,
-    #     weight=-0.1,
-    #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
-    # )
+    joint_deviation_hip = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.1,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ])},
+    )
+    torso_link_flat_orientation = RewTerm(
+        func=mdp.flat_orientation_l2,
+        weight=-0.1,
+        params={"asset_cfg": SceneEntityCfg("robot", body_names="torso_link")},
+    )
     # joint_deviation_arms = RewTerm(
     #     func=mdp.joint_deviation_l1,
     #     weight=-0.1,
@@ -138,7 +148,7 @@ class G1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
         self.events.base_external_force_torque.params["asset_cfg"].body_names = ["torso_link"]
         self.events.reset_base.params = {
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14*0, 0*3.14)},
             "velocity_range": {
                 "x": (0.0, 0.0),
                 "y": (0.0, 0.0),
