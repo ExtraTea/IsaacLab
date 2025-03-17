@@ -23,22 +23,25 @@ class G1Rewards(RewardsCfg):
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-20.0)
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_world_exp,
-        weight=0.5,
-        params={"command_name": "base_velocity", "std": 0.5},
+        weight=1.5,
+        params={"command_name": "base_velocity", "std": 0.8},
     )
-    # track_lin_vel_xy_exp_relative = RewTerm(
-    #     func=mdp.track_lin_vel_xy_yaw_frame_exp,
-    #     weight=0.5,
-    #     params={"command_name": "base_velocity", "std": 0.5},
-    # )
     track_ang_vel_z_exp = RewTerm(
-        func=mdp.track_ang_vel_z_world_exp, 
-        weight=2.0,
-        params={"command_name": "base_velocity", "std": 0.7}
+        func=mdp.track_ang_world_cmd_exp, 
+        weight=1.0,
+        params={"command_name": "base_velocity", "std": 0.8}
     )
 
-    feet_contact = RewTerm(
-        func = mdp.feet_contact, 
+    # feet_contact = RewTerm(
+    #     func = mdp.feet_contact, 
+    #     weight = 1.0,
+    #     params={
+    #         "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
+    #         "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
+    #     }
+    # )
+    feet_periodic_contact = RewTerm(
+        func = mdp.feet_periodic_contact,
         weight = 1.0,
         params={
             "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
@@ -50,11 +53,20 @@ class G1Rewards(RewardsCfg):
         weight = 0.5,
         params = {
             "link_name" : "pelvis",
-            "height" : 0.6,
-            "std" : 20.517 #height = 0.55のときに報酬が95%になるように設定
+            "height" : 0.65,
+            "std" : 0.0487 #height = 0.55のときに報酬が95%になるように設定
         }
     )
-
+    # track_lin_vel_xy_exp_relative = RewTerm(
+    #     func=mdp.track_lin_vel_xy_yaw_frame_exp,
+    #     weight=0.5,
+    #     params={"command_name": "base_velocity", "std": 0.5},
+    # )
+    # track_ang_vel_z_exp_relative = RewTerm(
+    #     func=mdp.track_ang_vel_z_world_exp, 
+    #     weight=1.0,
+    #     params={"command_name": "base_velocity", "std": 0.7}
+    # )
     # feet_air_time = RewTerm(
     #     func=mdp.feet_air_time_positive_biped,
     #     weight=0.25,
@@ -106,24 +118,24 @@ class G1Rewards(RewardsCfg):
     #         )
     #     },
     # )
-    # joint_deviation_fingers = RewTerm(
-    #     func=mdp.joint_deviation_l1,
-    #     weight=-0.05,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 ".*_five_joint",
-    #                 ".*_three_joint",
-    #                 ".*_six_joint",
-    #                 ".*_four_joint",
-    #                 ".*_zero_joint",
-    #                 ".*_one_joint",
-    #                 ".*_two_joint",
-    #             ],
-    #         )
-    #     },
-    # )
+    joint_deviation_fingers = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.05,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_five_joint",
+                    ".*_three_joint",
+                    ".*_six_joint",
+                    ".*_four_joint",
+                    ".*_zero_joint",
+                    ".*_one_joint",
+                    ".*_two_joint",
+                ],
+            )
+        },
+    )
     # joint_deviation_torso = RewTerm(
     #     func=mdp.joint_deviation_l1,
     #     weight=-0.1,

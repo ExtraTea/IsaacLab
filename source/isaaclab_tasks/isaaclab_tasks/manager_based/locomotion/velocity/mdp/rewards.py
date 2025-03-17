@@ -94,7 +94,6 @@ def track_lin_vel_xy_yaw_frame_exp(
     lin_vel_error = torch.sum(
         torch.square(env.command_manager.get_command(command_name)[:, :2] - vel_yaw[:, :2]), dim=1
     )
-    # print(env.command_manager.get_command(command_name)[:, :])
     return torch.exp(-lin_vel_error / std**2)
 
 
@@ -159,9 +158,9 @@ def track_height_diff(
     # extract the used quantities (to enable type-hinting)
     asset = env.scene[asset_cfg.name]
     link_id = asset.find_bodies(link_name)
-    link_height = asset.data.body_com_pos_w[:,(link_id[0][0]),2]
+    link_height = asset.data.body_link_pos_w[:,(link_id[0][0]),2]
     height_diff_sq = torch.square(link_height - height)
-    return torch.exp(-height_diff_sq * std)
+    return torch.exp(-height_diff_sq / std)
 
 def track_lin_vel_xy_world_exp(
         env, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
@@ -173,3 +172,79 @@ def track_lin_vel_xy_world_exp(
         torch.square(env.command_manager.get_command(command_name)[:, :2] - asset.data.root_lin_vel_w[:, :2]), dim=1
     )
     return torch.exp(-lin_vel_error / std**2)
+
+def track_ang_world_cmd_exp(
+    env, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Reward tracking of angular command in the world frame using exponential kernel based on command direction.
+
+    This function minimizes the angular error between the root link's yaw and the desired direction.
+    The desired direction is given by env.command_manager.get_command(command_name)[:, :2],
+    and the corresponding desired yaw is computed via atan2(v_y, v_x).
+
+    Args:
+        env: The simulation environment.
+        std: Standard deviation parameter for the exponential kernel.
+        command_name: Name of the command to track.
+        asset_cfg: Configuration of the scene entity (default: "robot").
+
+    Returns:
+        A tensor of rewards based on the angular error.
+    """
+    # extract the asset and its root link orientation (w, x, y, z) in the world frame
+    asset = env.scene[asset_cfg.name]
+    root_link_quat = asset.data.root_link_quat_w  # Shape: (num_instances, 4)
+    
+    # Extract yaw-only quaternion from the root link orientation using the provided function.
+    yaw_quat_tensor = yaw_quat(root_link_quat)  # Shape: (num_instances, 4)
+    
+    # Recover the actual yaw angle from the yaw-only quaternion.
+    # For a quaternion representing only yaw, cos(yaw/2) is at index 0 and sin(yaw/2) at index 3.
+    qw = yaw_quat_tensor[:, 0]
+    qz = yaw_quat_tensor[:, 3]
+    actual_yaw = 2 * torch.atan2(qz, qw)
+    
+    # Get the desired command direction (x, y) and compute the desired yaw angle.
+    desired_cmd = env.command_manager.get_command(command_name)[:, :2]  # Shape: (num_instances, 2)
+    desired_yaw = torch.atan2(desired_cmd[:, 1], desired_cmd[:, 0])
+    
+    # Compute minimal angular difference considering 2*pi periodicity.
+    # This computes the difference in a way that wraps around at pi.
+    ang_diff = torch.remainder(actual_yaw - desired_yaw + math.pi, 2 * math.pi) - math.pi
+    ang_error = torch.square(ang_diff)
+    # Exponential kernel: reward decays as the squared error increases.
+    return torch.exp(-ang_error / std**2)
+
+
+def feet_periodic_contact(
+        env, right_sensor_cfg: SceneEntityCfg, left_sensor_cfg: SceneEntityCfg
+) -> torch.Tensor:
+    asset = env.scene["robot"]
+    right_sensor: ContactSensor = env.scene.sensors[right_sensor_cfg.name]
+    left_sensor: ContactSensor = env.scene.sensors[left_sensor_cfg.name]
+    both_feet_len = 0.3
+    single_foot_len = 0.6
+    whole_cycle_time = 1.8  # (single_foot_len + both_feet_len) * 2
+
+    right_sum = right_sensor.compute_first_contact(0.02)[:, right_sensor_cfg.body_ids].sum(dim=1)
+    left_sum = left_sensor.compute_first_contact(0.02)[:, left_sensor_cfg.body_ids].sum(dim=1)
+    right_contact = (right_sum > 0)
+    left_contact = (left_sum > 0)
+
+    elapsed_time = env.episode_length_buf * 0.02  # env.sim.dt * env.sim.decimation
+    current_cycle = elapsed_time % whole_cycle_time
+
+    cond_both = current_cycle < both_feet_len
+    cond_right_only = (current_cycle >= both_feet_len) & (current_cycle < both_feet_len + single_foot_len)
+    cond_both_again = (current_cycle >= both_feet_len + single_foot_len) & (current_cycle < 2 * both_feet_len + single_foot_len)
+    cond_left_only = current_cycle >= 2 * both_feet_len + single_foot_len
+
+    contact = torch.where(cond_both, right_contact & left_contact,
+              torch.where(cond_right_only, right_contact & (~left_contact),
+              torch.where(cond_both_again, right_contact & left_contact,
+              torch.where(cond_left_only, (~right_contact) & left_contact, 
+              torch.zeros_like(right_contact)))))
+    error_mask = ~(cond_both | cond_right_only | cond_both_again | cond_left_only)
+
+    reward = contact.float()
+    return reward
