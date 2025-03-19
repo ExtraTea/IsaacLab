@@ -276,6 +276,40 @@ class ContactSensor(SensorBase):
         
         # 両方の条件を満たす場合に True を返す
         return currently_in_contact * continuous_contact
+    
+    def compute_continuous_air(self, dt: float, abs_tol: float = 1.0e-8) -> torch.Tensor:
+        """
+        指定された dt 秒間、連続して空中にあるかどうかを判定する関数
+
+        この関数は、各対象が空中状態になってからの経過時間 (current_contact_time)
+        が dt 以上であるかどうかをチェックします。dt 秒以上連続して空中にあれば True、
+        そうでなければ False を返します。
+
+        Args:
+            dt: 要求する連続接地時間（秒）
+            abs_tol: 比較に使用する絶対誤差（デフォルトは 1.0e-8）
+
+        Returns:
+            各センサの各 body について、dt 秒間連続して接地している場合に True の
+            boolean tensor を返します。Shape は (N, B) です。
+        
+        Raises:
+            RuntimeError: センサが接地時間の追跡 (track_air_time) に対応していない場合
+        """
+        # センサが接地時間の追跡に対応しているか確認
+        if not self.cfg.track_air_time:
+            raise RuntimeError(
+                "接地センサが接地時間の追跡に対応していません。"
+                "センサ設定で 'track_air_time' を有効にしてください。"
+            )
+        
+        # 現在空中にあるか（空中状態なら current_air_time > 0）
+        currently_in_air = self.data.current_air_time > 0.0
+        # 接地してからの経過時間が dt 以上かどうか（連続接地しているなら True）
+        continuous_air = self.data.current_air_time >= (dt - abs_tol)
+        
+        # 両方の条件を満たす場合に True を返す
+        return currently_in_air * continuous_air
 
 
     """

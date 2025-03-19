@@ -228,27 +228,32 @@ def feet_periodic_contact(
     asset = env.scene["robot"]
     right_sensor: ContactSensor = env.scene.sensors[right_sensor_cfg.name]
     left_sensor: ContactSensor = env.scene.sensors[left_sensor_cfg.name]
-    both_feet_len = 0.3
-    single_foot_len = 0.6
-    whole_cycle_time = 1.8  # (single_foot_len + both_feet_len) * 2
+    both_feet_phase_duration = 0.3
+    single_foot_phase_duration = 0.6
+    cycle_duration = 1.8  # (single_foot_phase_duration + both_feet_phase_duration) * 2
 
     right_sum = right_sensor.compute_continuous_contact(0.02)[:, right_sensor_cfg.body_ids].sum(dim=1)
     left_sum = left_sensor.compute_continuous_contact(0.02)[:, left_sensor_cfg.body_ids].sum(dim=1)
     right_contact = (right_sum > 0)
     left_contact = (left_sum > 0)
 
-    elapsed_time = env.episode_length_buf * 0.02  # env.sim.dt * env.sim.decimation
-    current_cycle = elapsed_time % whole_cycle_time
+    right_sum1 = right_sensor.compute_continuous_air(0.02)[:, right_sensor_cfg.body_ids].sum(dim=1)
+    left_sum1 = left_sensor.compute_continuous_air(0.02)[:, left_sensor_cfg.body_ids].sum(dim=1)
+    right_air = (right_sum1 > 0)
+    left_air = (left_sum1 > 0)
 
-    cond_both = current_cycle < both_feet_len
-    cond_right_only = (current_cycle >= both_feet_len) & (current_cycle < both_feet_len + single_foot_len)
-    cond_both_again = (current_cycle >= both_feet_len + single_foot_len) & (current_cycle < 2 * both_feet_len + single_foot_len)
-    cond_left_only = current_cycle >= 2 * both_feet_len + single_foot_len
+    elapsed_time = env.episode_length_buf * 0.02  # env.sim.dt * env.sim.decimation
+    current_cycle = elapsed_time % cycle_duration
+
+    cond_both = current_cycle < both_feet_phase_duration
+    cond_right_only = (current_cycle >= both_feet_phase_duration) & (current_cycle < both_feet_phase_duration + single_foot_phase_duration)
+    cond_both_again = (current_cycle >= both_feet_phase_duration + single_foot_phase_duration) & (current_cycle < 2 * both_feet_phase_duration + single_foot_phase_duration)
+    cond_left_only = current_cycle >= 2 * both_feet_phase_duration + single_foot_phase_duration
 
     contact = torch.where(cond_both, right_contact & left_contact,
-              torch.where(cond_right_only, right_contact & (~left_contact),
+              torch.where(cond_right_only, right_contact & (left_air),
               torch.where(cond_both_again, right_contact & left_contact,
-              torch.where(cond_left_only, (~right_contact) & left_contact, 
+              torch.where(cond_left_only, (right_air) & left_contact, 
               torch.zeros_like(right_contact)))))
 
     reward = contact.float()

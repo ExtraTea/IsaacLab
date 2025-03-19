@@ -33,7 +33,7 @@ class G1Rewards(RewardsCfg):
     )
     feet_periodic_contact = RewTerm(
         func = mdp.feet_periodic_contact,
-        weight = 3.0,
+        weight = 2.0,
         params={
             "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
             "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
