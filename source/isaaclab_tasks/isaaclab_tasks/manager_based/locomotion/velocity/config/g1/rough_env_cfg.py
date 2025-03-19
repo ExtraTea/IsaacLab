@@ -23,15 +23,59 @@ class G1Rewards(RewardsCfg):
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-20.0)
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_world_exp,
-        weight=1.5,
+        weight=2.0,
         params={"command_name": "base_velocity", "std": 0.8},
     )
-    track_ang_vel_z_exp = RewTerm(
+    track_ang_z_exp = RewTerm(
         func=mdp.track_ang_world_cmd_exp, 
-        weight=1.0,
+        weight=1.5,
         params={"command_name": "base_velocity", "std": 0.8}
     )
-
+    feet_periodic_contact = RewTerm(
+        func = mdp.feet_periodic_contact,
+        weight = 2.0,
+        params={
+            "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
+            "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
+        }
+    )
+    pelvis_height = RewTerm(
+        func = mdp.track_height_diff,
+        weight = 0.75,
+        params = {
+            "link_name" : "pelvis",
+            "height" : 0.65,
+            "std" : 0.0487 #height = 0.55のときに報酬が95%になるように設定
+        }
+    )
+    joint_deviation_hip = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.3,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ])},
+    )
+    torso_link_flat_orientation = RewTerm(
+        func=mdp.flat_orientation_l2,
+        weight=-0.5,
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=["torso_link", "right_ankle_roll_link", "left_ankle_roll_link"])},
+    )
+    joint_deviation_fingers = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.05,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_five_joint",
+                    ".*_three_joint",
+                    ".*_six_joint",
+                    ".*_four_joint",
+                    ".*_zero_joint",
+                    ".*_one_joint",
+                    ".*_two_joint",
+                ],
+            )
+        },
+    )
     # feet_contact = RewTerm(
     #     func = mdp.feet_contact, 
     #     weight = 1.0,
@@ -40,23 +84,7 @@ class G1Rewards(RewardsCfg):
     #         "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
     #     }
     # )
-    feet_periodic_contact = RewTerm(
-        func = mdp.feet_periodic_contact,
-        weight = 1.0,
-        params={
-            "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
-            "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
-        }
-    )
-    pelvis_height = RewTerm(
-        func = mdp.track_height_diff,
-        weight = 0.5,
-        params = {
-            "link_name" : "pelvis",
-            "height" : 0.65,
-            "std" : 0.0487 #height = 0.55のときに報酬が95%になるように設定
-        }
-    )
+    
     # track_lin_vel_xy_exp_relative = RewTerm(
     #     func=mdp.track_lin_vel_xy_yaw_frame_exp,
     #     weight=0.5,
@@ -92,16 +120,7 @@ class G1Rewards(RewardsCfg):
     #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
     # )
     # # Penalize deviation from default of the joints that are not essential for locomotion
-    joint_deviation_hip = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ])},
-    )
-    torso_link_flat_orientation = RewTerm(
-        func=mdp.flat_orientation_l2,
-        weight=-0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names="torso_link")},
-    )
+    
     # joint_deviation_arms = RewTerm(
     #     func=mdp.joint_deviation_l1,
     #     weight=-0.1,
@@ -118,24 +137,7 @@ class G1Rewards(RewardsCfg):
     #         )
     #     },
     # )
-    joint_deviation_fingers = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.05,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    ".*_five_joint",
-                    ".*_three_joint",
-                    ".*_six_joint",
-                    ".*_four_joint",
-                    ".*_zero_joint",
-                    ".*_one_joint",
-                    ".*_two_joint",
-                ],
-            )
-        },
-    )
+    
     # joint_deviation_torso = RewTerm(
     #     func=mdp.joint_deviation_l1,
     #     weight=-0.1,

@@ -154,13 +154,20 @@ def feet_contact(env, right_sensor_cfg: SceneEntityCfg, left_sensor_cfg: SceneEn
 def track_height_diff(
         env, link_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), height: float = 0.0, std: float = 1.0
 ) -> torch.Tensor:
-    """Reward tracking of height difference between the specified link and the specified height using exponential kernel."""
+    """Reward tracking of height difference between the specified link and the specified height.
+    If link_height - height > 0, return 1; otherwise, use an exponential kernel."""
     # extract the used quantities (to enable type-hinting)
     asset = env.scene[asset_cfg.name]
     link_id = asset.find_bodies(link_name)
-    link_height = asset.data.body_link_pos_w[:,(link_id[0][0]),2]
+    link_height = asset.data.body_link_pos_w[:, (link_id[0][0]), 2]
     height_diff_sq = torch.square(link_height - height)
-    return torch.exp(-height_diff_sq / std)
+    
+    # For positions where (link_height - height) > 0, return 1; otherwise, compute exp(-height_diff_sq/std)
+    reward = torch.where((link_height - height) > 0,
+                         torch.ones_like(link_height),
+                         torch.exp(-height_diff_sq / std))
+    return reward
+
 
 def track_lin_vel_xy_world_exp(
         env, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
@@ -207,7 +214,6 @@ def track_ang_world_cmd_exp(
     # Get the desired command direction (x, y) and compute the desired yaw angle.
     desired_cmd = env.command_manager.get_command(command_name)[:, :2]  # Shape: (num_instances, 2)
     desired_yaw = torch.atan2(desired_cmd[:, 1], desired_cmd[:, 0])
-    
     # Compute minimal angular difference considering 2*pi periodicity.
     # This computes the difference in a way that wraps around at pi.
     ang_diff = torch.remainder(actual_yaw - desired_yaw + math.pi, 2 * math.pi) - math.pi
@@ -232,6 +238,7 @@ def feet_periodic_contact(
     left_contact = (left_sum > 0)
 
     elapsed_time = env.episode_length_buf * 0.02  # env.sim.dt * env.sim.decimation
+    print(elapsed_time)
     current_cycle = elapsed_time % whole_cycle_time
 
     cond_both = current_cycle < both_feet_len
@@ -244,7 +251,6 @@ def feet_periodic_contact(
               torch.where(cond_both_again, right_contact & left_contact,
               torch.where(cond_left_only, (~right_contact) & left_contact, 
               torch.zeros_like(right_contact)))))
-    error_mask = ~(cond_both | cond_right_only | cond_both_again | cond_left_only)
 
     reward = contact.float()
     return reward
