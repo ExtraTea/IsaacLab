@@ -161,11 +161,11 @@ def track_height_diff(
     link_id = asset.find_bodies(link_name)
     link_height = asset.data.body_link_pos_w[:, (link_id[0][0]), 2]
     height_diff_sq = torch.square(link_height - height)
-    
     # For positions where (link_height - height) > 0, return 1; otherwise, compute exp(-height_diff_sq/std)
     reward = torch.where((link_height - height) > 0,
                          torch.ones_like(link_height),
                          torch.exp(-height_diff_sq / std))
+    
     return reward
 
 
@@ -232,13 +232,12 @@ def feet_periodic_contact(
     single_foot_len = 0.6
     whole_cycle_time = 1.8  # (single_foot_len + both_feet_len) * 2
 
-    right_sum = right_sensor.compute_first_contact(0.02)[:, right_sensor_cfg.body_ids].sum(dim=1)
-    left_sum = left_sensor.compute_first_contact(0.02)[:, left_sensor_cfg.body_ids].sum(dim=1)
+    right_sum = right_sensor.compute_continuous_contact(0.02)[:, right_sensor_cfg.body_ids].sum(dim=1)
+    left_sum = left_sensor.compute_continuous_contact(0.02)[:, left_sensor_cfg.body_ids].sum(dim=1)
     right_contact = (right_sum > 0)
     left_contact = (left_sum > 0)
 
     elapsed_time = env.episode_length_buf * 0.02  # env.sim.dt * env.sim.decimation
-    print(elapsed_time)
     current_cycle = elapsed_time % whole_cycle_time
 
     cond_both = current_cycle < both_feet_len

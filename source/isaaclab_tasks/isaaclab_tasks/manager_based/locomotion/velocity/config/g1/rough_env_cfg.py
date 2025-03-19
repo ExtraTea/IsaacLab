@@ -22,18 +22,18 @@ class G1Rewards(RewardsCfg):
 
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-20.0)
     track_lin_vel_xy_exp = RewTerm(
-        func=mdp.track_lin_vel_xy_world_exp,
+        func=mdp.track_lin_vel_xy_yaw_frame_exp,
         weight=2.0,
-        params={"command_name": "base_velocity", "std": 0.8},
+        params={"command_name": "base_velocity", "std": 0.5},
     )
     track_ang_z_exp = RewTerm(
-        func=mdp.track_ang_world_cmd_exp, 
+        func=mdp.track_ang_vel_z_world_exp, 
         weight=1.5,
         params={"command_name": "base_velocity", "std": 0.8}
     )
     feet_periodic_contact = RewTerm(
         func = mdp.feet_periodic_contact,
-        weight = 2.0,
+        weight = 3.0,
         params={
             "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
             "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
@@ -51,7 +51,7 @@ class G1Rewards(RewardsCfg):
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
         weight=-0.3,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ])},
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
     )
     torso_link_flat_orientation = RewTerm(
         func=mdp.flat_orientation_l2,
