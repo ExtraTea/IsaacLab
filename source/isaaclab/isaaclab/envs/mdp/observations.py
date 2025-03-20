@@ -526,6 +526,6 @@ Commands.
 """
 
 
-def generated_commands(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+def generated_commands(env, command_name: str) -> torch.Tensor:
     """The generated command from command term in the command manager with the given name."""
     return env.command_manager.get_command(command_name)

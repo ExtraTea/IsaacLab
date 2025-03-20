@@ -32,7 +32,7 @@ class G1Rewards(RewardsCfg):
         params={"command_name": "base_velocity", "std": 0.8}
     )
     feet_periodic_contact = RewTerm(
-        func = mdp.feet_periodic_contact,
+        func = mdp.feet_periodic_continuous_reward,
         weight = 2.0,
         params={
             "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
@@ -77,7 +77,7 @@ class G1Rewards(RewardsCfg):
         },
     )
     # feet_contact = RewTerm(
-    #     func = mdp.feet_contact, 
+        # func = mdp.feet_contact, 
     #     weight = 1.0,
     #     params={
     #         "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
@@ -214,7 +214,7 @@ class G1RoughEnvCfg_PLAY(G1RoughEnvCfg):
             self.scene.terrain.terrain_generator.num_cols = 5
             self.scene.terrain.terrain_generator.curriculum = False
 
-        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
         self.commands.base_velocity.ranges.heading = (0.0, 0.0)
