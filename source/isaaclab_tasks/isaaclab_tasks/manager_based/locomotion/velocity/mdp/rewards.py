@@ -287,7 +287,7 @@ def feet_periodic_continuous_reward(env, right_sensor_cfg: SceneEntityCfg, left_
     # current_cycle に基づき、右足の期待状態を選択
     # 期待状態: current_cycle <= 1.2 なら接地、そうでなければ空中
     right_expected_state = torch.where(
-        current_cycle <= 1.2,
+        current_cycle.unsqueeze(1) <= 1.2,
         right_sensor.compute_continuous_contact(dt, right_sensor_cfg.body_ids),
         right_sensor.compute_continuous_air(dt, right_sensor_cfg.body_ids)
     )
@@ -296,10 +296,10 @@ def feet_periodic_continuous_reward(env, right_sensor_cfg: SceneEntityCfg, left_
 
     # --- 左足の判定 ---
     left_expected_state = torch.where(
-        current_cycle <= 0.3,
+        current_cycle.unsqueeze(1) <= 0.3,
         left_sensor.compute_continuous_contact(dt, left_sensor_cfg.body_ids),
         torch.where(
-            current_cycle <= 0.9,
+            current_cycle.unsqueeze(1) <= 0.9,
             left_sensor.compute_continuous_air(dt, left_sensor_cfg.body_ids),
             left_sensor.compute_continuous_contact(dt, left_sensor_cfg.body_ids)
         )
