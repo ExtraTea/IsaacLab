@@ -345,8 +345,6 @@ def feet_periodic_continuous_reward(env, right_sensor_cfg: SceneEntityCfg, left_
     right_score = right_reward.mean(dim=1)  # shape: (N,)
     left_score  = left_reward.mean(dim=1)   # shape: (N,)
     
-    # 両足が望ましい状態であれば報酬1、それ以外は0（閾値は例示）
-    threshold = 0.9  # 例えば80%以上の割合で連続状態が維持されていれば良いと判定
-    contact = ((right_score >= threshold) & (left_score >= threshold))
-    reward = contact.float()
+    alpha = 5.0  # ここはタスクに合わせて調整
+    reward = torch.exp(alpha * (right_score * left_score - 1))
     return reward
