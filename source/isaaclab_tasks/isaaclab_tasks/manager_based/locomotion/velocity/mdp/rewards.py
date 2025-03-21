@@ -260,91 +260,55 @@ def feet_periodic_contact_old(
     print(reward.shape)
     return reward
 
+import torch
+
 def feet_periodic_continuous_reward(env, right_sensor_cfg: SceneEntityCfg, left_sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """
-    各足が指定のフェーズ中で連続して接地（または空中）状態にある割合を評価し、
-    それに基づいて周期的な足部状態報酬を計算する関数。
-
-    フェーズは以下のように定義する例です：
-      - サイクル全体の周期 T = 1.8 秒
-      - 右足に対して：
-          - 0 ～ 1.2 秒：接地状態が望ましい
-          - 1.2 ～ 1.8 秒：空中状態が望ましい
-      - 左足に対して：
-          - 0 ～ 0.3 秒：接地状態が望ましい
-          - 0.3 ～ 0.9 秒：空中状態が望ましい
-          - 0.9 ～ 1.8 秒：接地状態が望ましい
-
-    各フェーズでは、各足が「連続して」その状態にあるかを
-    compute_continuous_contact または compute_continuous_air を用いて判定し、
-    また、実際の連続状態の持続時間（current_contact_time や current_air_time）の割合を
-    報酬に反映させます。
-
-    Args:
-        env: シミュレーション環境（各種センサデータを含む）
-        right_sensor_cfg (SceneEntityCfg): 右足センサの設定（センサ名、対象 body_ids）
-        left_sensor_cfg (SceneEntityCfg): 左足センサの設定（センサ名、対象 body_ids）
-
-    Returns:
-        torch.Tensor: 環境ごとの周期的足部状態報酬（バッチサイズに対応したテンソル）
+    各環境について、過去 0.02 秒間において指示通りの足部状態（接地 or 空中）になっているかを判定し、
+    正しければ 1、そうでなければ 0 を出力する関数。
     """
-    # センサオブジェクトの取得
     right_sensor = env.scene.sensors[right_sensor_cfg.name]
     left_sensor  = env.scene.sensors[left_sensor_cfg.name]
 
-    # 各フェーズの時間設定（秒）
-    # ここでは周期 T = 1.8 秒 とし、右足と左足で評価するフェーズを分ける例
+    # サイクルの周期 (秒)
     cycle_duration = 1.8
-    # 右足：0～1.2秒は接地、1.2～1.8秒は空中が望ましい
-    # 左足：0～0.3秒は接地、0.3～0.9秒は空中、0.9～1.8秒は接地が望ましい
-
-    # 環境の経過時間を取得（例：env.episode_length_buf に各環境のステップ数が格納され、
-    # シミュレーション刻み dt=0.02秒 と仮定）
+    # 各環境の経過時間 (秒) を計算。env.episode_length_buf の shape は (N,) と仮定
     elapsed_time = env.episode_length_buf * 0.02  # shape: (N,)
-    # 簡略のため、ここでは各環境毎に同じ周期内の経過時間を計算する
-    # （マルチ環境対応の場合はベクトル演算にすること）
-    current_cycle = elapsed_time[0] % cycle_duration if elapsed_time[0] > 0 else cycle_duration
+    # 各環境ごとに current_cycle を計算 (N,)
+    current_cycle = torch.where(
+        elapsed_time > 0.0,
+        elapsed_time % cycle_duration,
+        torch.full_like(elapsed_time, cycle_duration)
+    )
 
-    # 右足の報酬計算
-    if current_cycle <= 1.2:
-        # 0～1.2秒フェーズ：右足は連続接地が望ましい
-        # compute_continuous_contact で dt 秒間の連続接地を判定
-        right_contact_bool = right_sensor.compute_continuous_contact(current_cycle)[:, right_sensor_cfg.body_ids]
-        # 連続接地時間の割合（最大値は1）
-        right_time_ratio = (right_sensor.data.current_contact_time[:, right_sensor_cfg.body_ids] / current_cycle).clamp(max=1.0)
-        right_reward = right_contact_bool.float() * right_time_ratio
-    else:
-        # 1.2～1.8秒フェーズ：右足は連続空中が望ましい
-        dt_air = current_cycle - 1.2
-        right_air_bool = right_sensor.compute_continuous_air(dt_air)[:, right_sensor_cfg.body_ids]
-        right_time_ratio = (right_sensor.data.current_air_time[:, right_sensor_cfg.body_ids] / dt_air).clamp(max=1.0)
-        right_reward = right_air_bool.float() * right_time_ratio
+    # --- 右足の判定 ---
+    # dt は 0.02 秒
+    dt = 0.02
+    # current_cycle に基づき、右足の期待状態を選択
+    # 期待状態: current_cycle <= 1.2 なら接地、そうでなければ空中
+    right_expected_state = torch.where(
+        current_cycle <= 1.2,
+        right_sensor.compute_continuous_contact(dt, right_sensor_cfg.body_ids),
+        right_sensor.compute_continuous_air(dt, right_sensor_cfg.body_ids)
+    )
+    # 各環境で、すべての対象 body が期待状態なら True とする（axis=1 で集約）
+    right_correct = right_expected_state.all(dim=1)  # shape: (N,)
 
-    # 左足の報酬計算
-    if current_cycle <= 0.3:
-        # 0～0.3秒フェーズ：左足は連続接地が望ましい
-        left_contact_bool = left_sensor.compute_continuous_contact(current_cycle)[:, left_sensor_cfg.body_ids]
-        left_time_ratio = (left_sensor.data.current_contact_time[:, left_sensor_cfg.body_ids] / current_cycle).clamp(max=1.0)
-        left_reward = left_contact_bool.float() * left_time_ratio
-    elif current_cycle <= 0.9:
-        # 0.3～0.9秒フェーズ：左足は連続空中が望ましい
-        dt_air = current_cycle - 0.3
-        left_air_bool = left_sensor.compute_continuous_air(dt_air)[:, left_sensor_cfg.body_ids]
-        left_time_ratio = (left_sensor.data.current_air_time[:, left_sensor_cfg.body_ids] / dt_air).clamp(max=1.0)
-        left_reward = left_air_bool.float() * left_time_ratio
-    else:
-        # 0.9～1.8秒フェーズ：左足は連続接地が望ましい
-        dt_contact = current_cycle - 0.9
-        left_contact_bool = left_sensor.compute_continuous_contact(dt_contact)[:, left_sensor_cfg.body_ids]
-        left_time_ratio = (left_sensor.data.current_contact_time[:, left_sensor_cfg.body_ids] / dt_contact).clamp(max=1.0)
-        left_reward = left_contact_bool.float() * left_time_ratio
+    # --- 左足の判定 ---
+    left_expected_state = torch.where(
+        current_cycle <= 0.3,
+        left_sensor.compute_continuous_contact(dt, left_sensor_cfg.body_ids),
+        torch.where(
+            current_cycle <= 0.9,
+            left_sensor.compute_continuous_air(dt, left_sensor_cfg.body_ids),
+            left_sensor.compute_continuous_contact(dt, left_sensor_cfg.body_ids)
+        )
+    )
+    left_correct = left_expected_state.all(dim=1)  # shape: (N,)
 
-    # ここでは、各足の報酬が高い（＝望ましい状態を維持している）場合に報酬を得るように設計
-    # 例えば、両足とも望ましい状態なら最終的な報酬を1、そうでなければ0とする。
-    # ※ 複数 body_id がある場合は各要素の平均などを取る
-    right_score = right_reward.mean(dim=1)  # shape: (N,)
-    left_score  = left_reward.mean(dim=1)   # shape: (N,)
-    
-    alpha = 5.0  # ここはタスクに合わせて調整
-    reward = torch.exp(alpha * (right_score * left_score - 1))
+    # 両足とも期待状態なら True、そうでなければ False
+    overall_correct = right_correct & left_correct  # shape: (N,)
+    # バッチ内各環境について、正しければ 1、そうでなければ 0 を返す
+    reward = overall_correct.float()
     return reward
+

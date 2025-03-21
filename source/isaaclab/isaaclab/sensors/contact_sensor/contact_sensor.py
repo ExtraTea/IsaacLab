@@ -243,7 +243,7 @@ class ContactSensor(SensorBase):
         less_than_dt_detached = self.data.current_air_time < (dt + abs_tol)
         return currently_detached * less_than_dt_detached
     
-    def compute_continuous_contact(self, dt: float, abs_tol: float = 1.0e-8) -> torch.Tensor:
+    def compute_continuous_contact(self, dt: float, index: list[int], abs_tol: float = 1.0e-8) -> torch.Tensor:
         """
         指定された dt 秒間、連続して接地しているかどうかを判定する関数
 
@@ -270,14 +270,13 @@ class ContactSensor(SensorBase):
             )
         
         # 現在接地しているか（接地状態なら current_contact_time > 0）
-        currently_in_contact = self.data.current_contact_time > 0.0
+        currently_in_contact = self.data.current_contact_time[:, index] > 0.0
         # 接地してからの経過時間が dt 以上かどうか（連続接地しているなら True）
-        continuous_contact = self.data.current_contact_time >= (dt - abs_tol)
-        
+        continuous_contact = self.data.current_contact_time[:, index] >= (dt - abs_tol)
         # 両方の条件を満たす場合に True を返す
         return currently_in_contact * continuous_contact
     
-    def compute_continuous_air(self, dt: float, abs_tol: float = 1.0e-8) -> torch.Tensor:
+    def compute_continuous_air(self, dt: float, index: list[int], abs_tol: float = 1.0e-8) -> torch.Tensor:
         """
         指定された dt 秒間、連続して空中にあるかどうかを判定する関数
 
@@ -304,10 +303,10 @@ class ContactSensor(SensorBase):
             )
         
         # 現在空中にあるか（空中状態なら current_air_time > 0）
-        currently_in_air = self.data.current_air_time > 0.0
+        currently_in_air = self.data.current_air_time[:, index] > 0.0
         # 接地してからの経過時間が dt 以上かどうか（連続接地しているなら True）
-        continuous_air = self.data.current_air_time >= (dt - abs_tol)
-        
+        continuous_air = self.data.current_air_time[:, index] >= (dt - abs_tol)
+
         # 両方の条件を満たす場合に True を返す
         return currently_in_air * continuous_air
 
