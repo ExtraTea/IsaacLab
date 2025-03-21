@@ -69,7 +69,7 @@ agent:
     directory: "g1_flat"
     experiment_name: ""
     write_interval: 100
-    checkpoint_interval: 1000
+    checkpoint_interval: 10000
 
 
 # Sequential trainer
