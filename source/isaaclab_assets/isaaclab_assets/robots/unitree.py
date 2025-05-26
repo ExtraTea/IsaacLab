@@ -382,48 +382,53 @@ G1_CFG = ArticulationCfg(
 
 
 G1_MINIMAL_CFG = G1_CFG.copy()
-G1_MINIMAL_CFG.spawn.usd_path = f"{ISAACLAB_NUCLEUS_DIR}/Robots/Unitree/G1/g1_minimal.usd"
+G1_MINIMAL_CFG.spawn.usd_path = f"{ISAACLAB_NUCLEUS_DIR}/Robots/Unitree/G1/g1.usd"
 """Configuration for the Unitree G1 Humanoid robot with fewer collision meshes.
 
 This configuration removes most collision meshes to speed up simulation.
 """
 
 G1_CUSTOM_CFG = ArticulationCfg(
-    spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Robots/Unitree/G1/g1_minimal.usd",  # 変更なし
-        activate_contact_sensors=True,  # 変更なし
+    spawn=sim_utils.UrdfFileCfg(
+        asset_path="/home/daisuke/IsaacLab/source/isaaclab_assets/isaaclab_assets/robots/g1_29dof.urdf",
+        fix_base=False,
+        activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            disable_gravity=False,             # 変更なし
-            retain_accelerations=False,        # 変更なし
-            linear_damping=0.0,                # 変更なし
-            angular_damping=0.0,               # 変更なし
-            max_linear_velocity=1000.0,        # 変更なし
-            max_angular_velocity=1000.0,       # 変更なし
-            max_depenetration_velocity=1.0,    # 変更なし
+            disable_gravity=False,
+            retain_accelerations=False,
+            linear_damping=0.0,
+            angular_damping=0.0,
+            max_linear_velocity=1000.0,
+            max_angular_velocity=1000.0,
+            max_depenetration_velocity=1.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=False, solver_position_iteration_count=8, solver_velocity_iteration_count=4  # 変更なし
+            enabled_self_collisions=False, solver_position_iteration_count=8, solver_velocity_iteration_count=4
         ),
+        joint_drive=sim_utils.UrdfConverterCfg.JointDriveCfg(
+            drive_type="force",
+            target_type="position",
+            gains=sim_utils.UrdfConverterCfg.JointDriveCfg.PDGainsCfg(
+                stiffness={".*": 1000.0},
+                damping={".*": 100.0}
+            )
+        )
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.74),  # 変更なし
+        pos=(0.0, 0.0, 0.74),
         joint_pos={
-            ".*_hip_pitch_joint": -0.20,         # 変更なし
-            ".*_knee_joint": 0.42,               # 変更なし
-            ".*_ankle_pitch_joint": -0.23,       # 変更なし
-            ".*_elbow_pitch_joint": 0.87,        # 変更なし
-            "left_shoulder_roll_joint": 0.16,    # 変更なし
-            "left_shoulder_pitch_joint": 0.35,   # 変更なし
-            "right_shoulder_roll_joint": -0.16,  # 変更なし
-            "right_shoulder_pitch_joint": 0.35,  # 変更なし
-            "left_one_joint": 1.0,               # 変更なし
-            "right_one_joint": -1.0,             # 変更なし
-            "left_two_joint": 0.52,              # 変更なし
-            "right_two_joint": -0.52,            # 変更なし
+            ".*_hip_pitch_joint": -0.20,
+            ".*_knee_joint": 0.42,
+            ".*_ankle_pitch_joint": -0.23,
+            ".*_elbow_joint": 0.87,
+            "left_shoulder_roll_joint": 0.16,
+            "left_shoulder_pitch_joint": 0.35,
+            "right_shoulder_roll_joint": -0.16,
+            "right_shoulder_pitch_joint": 0.35,
         },
-        joint_vel={".*": 0.0},  # 変更なし
+        joint_vel={".*": 0.0},
     ),
-    soft_joint_pos_limit_factor=0.9,  # 変更なし
+    soft_joint_pos_limit_factor=0.9,
     actuators={
         "legs": IdealPDActuatorCfg(
             joint_names_expr=[
@@ -431,140 +436,125 @@ G1_CUSTOM_CFG = ArticulationCfg(
                 ".*_hip_roll_joint",
                 ".*_hip_pitch_joint",
                 ".*_knee_joint",
-                "torso_joint"  # 腰部・胴体は研究情報がないため変更せず
+                "waist_yaw_joint",
+                "waist_roll_joint",
+                "waist_pitch_joint"
             ],
-            effort_limit={  # 研究情報に基づいて各関節ごとに更新（torso_jointは情報なし）
-                ".*_hip_yaw_joint": 88,      # 研究値: 88 N·m
-                ".*_hip_roll_joint": 139,    # 研究値: 139 N·m
-                ".*_hip_pitch_joint": 88,    # 研究値: 88 N·m
-                ".*_knee_joint": 139,        # 研究値: 139 N·m
-                "torso_joint": 300,          # 変更なし（情報がない）
+            effort_limit={
+                ".*_hip_yaw_joint": 88,
+                ".*_hip_roll_joint": 139,
+                ".*_hip_pitch_joint": 88,
+                ".*_knee_joint": 139,
+                "waist_yaw_joint": 300,
+                "waist_roll_joint": 300,
+                "waist_pitch_joint": 300,
             },
-            velocity_limit={  # 研究情報に基づいて各関節ごとに更新（torso_jointは情報なし）
-                ".*_hip_yaw_joint": 32,      # 研究値: 32 rad/s
-                ".*_hip_roll_joint": 20,     # 研究値: 20 rad/s
-                ".*_hip_pitch_joint": 32,    # 研究値: 32 rad/s
-                ".*_knee_joint": 20,         # 研究値: 20 rad/s
-                "torso_joint": 20.0,        # 変更なし（情報がない）
+            velocity_limit={
+                ".*_hip_yaw_joint": 32,
+                ".*_hip_roll_joint": 20,
+                ".*_hip_pitch_joint": 32,
+                ".*_knee_joint": 20,
+                "waist_yaw_joint": 20.0,
+                "waist_roll_joint": 20.0,
+                "waist_pitch_joint": 20.0,
             },
             stiffness={
-                ".*_hip_yaw_joint": 150.0,     # 変更なし
-                ".*_hip_roll_joint": 150.0,     # 変更なし
-                ".*_hip_pitch_joint": 200.0,    # 変更なし
-                ".*_knee_joint": 200.0,         # 変更なし
-                "torso_joint": 200.0,           # 変更なし（情報がない）
+                ".*_hip_yaw_joint": 150.0,
+                ".*_hip_roll_joint": 150.0,
+                ".*_hip_pitch_joint": 200.0,
+                ".*_knee_joint": 200.0,
+                "waist_yaw_joint": 200.0,
+                "waist_roll_joint": 200.0,
+                "waist_pitch_joint": 200.0,
             },
             damping={
-                ".*_hip_yaw_joint": 5.0,       # 変更なし
-                ".*_hip_roll_joint": 5.0,       # 変更なし
-                ".*_hip_pitch_joint": 5.0,      # 変更なし
-                ".*_knee_joint": 5.0,           # 変更なし
-                "torso_joint": 5.0,             # 変更なし（情報がない）
+                ".*_hip_yaw_joint": 5.0,
+                ".*_hip_roll_joint": 5.0,
+                ".*_hip_pitch_joint": 5.0,
+                ".*_knee_joint": 5.0,
+                "waist_yaw_joint": 5.0,
+                "waist_roll_joint": 5.0,
+                "waist_pitch_joint": 5.0,
             },
             armature={
-                ".*_hip_.*": 0.01,   # 研究値: 0.01
-                ".*_knee_joint": 0.01,  # 研究値: 0.01
-                "torso_joint": 0.01,  # 変更なし（情報がない）
+                ".*_hip_.*": 0.01,
+                ".*_knee_joint": 0.01,
+                "waist_yaw_joint": 0.01,
+                "waist_roll_joint": 0.01,
+                "waist_pitch_joint": 0.01,
             },
-            friction={  # 足部関節の摩擦係数（研究値: 0.1）を追加
-                ".*_hip_yaw_joint": 0.1,   # 研究値: 0.1
-                ".*_hip_roll_joint": 0.1,  # 研究値: 0.1
-                ".*_hip_pitch_joint": 0.1, # 研究値: 0.1
-                ".*_knee_joint": 0.1,      # 研究値: 0.1
-                "torso_joint": 0.1,        # torso_joint は情報なし
+            friction={
+                ".*_hip_yaw_joint": 0.1,
+                ".*_hip_roll_joint": 0.1,
+                ".*_hip_pitch_joint": 0.1,
+                ".*_knee_joint": 0.1,
+                "waist_yaw_joint": 0.1,
+                "waist_roll_joint": 0.1,
+                "waist_pitch_joint": 0.1,
             },
         ),
         "feet": IdealPDActuatorCfg(
             joint_names_expr=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"],
-            effort_limit=50,          # 研究値: 50 N·m (元は20)
-            velocity_limit=37.0,      # 研究値: 37 rad/s (元は100.0)
-            stiffness=10.0,           # 変更なし
-            damping=2.0,              # 変更なし
-            armature=0.01,            # 研究値: 0.01
-            friction=0.1,             # 研究値: 0.1 (元は0.0)
+            effort_limit=50,
+            velocity_limit=37.0,
+            stiffness=10.0,
+            damping=2.0,
+            armature=0.01,
+            friction=0.1,
         ),
         "arms": IdealPDActuatorCfg(
             joint_names_expr=[
                 ".*_shoulder_pitch_joint",
                 ".*_shoulder_roll_joint",
                 ".*_shoulder_yaw_joint",
-                ".*_elbow_pitch_joint",
-                ".*_elbow_roll_joint",
-                ".*_five_joint",   # 指や追加自由度等、研究情報がない
-                ".*_three_joint",  # 研究情報がない
-                ".*_six_joint",    # 研究情報がない
-                ".*_four_joint",   # 研究情報がない
-                ".*_zero_joint",   # 研究情報がない
-                ".*_one_joint",    # 研究情報がない
-                ".*_two_joint",    # 研究情報がない
+                ".*_elbow_joint",
+                ".*_wrist_roll_joint",
+                ".*_wrist_pitch_joint",
+                ".*_wrist_yaw_joint"
             ],
-            effort_limit={  # 肩・肘関節は研究情報に基づいて更新、その他は変更なし
-                ".*_shoulder_pitch_joint": 25,   # 研究値: 25 N·m
-                ".*_shoulder_roll_joint": 25,    # 研究値: 25 N·m
-                ".*_shoulder_yaw_joint": 25,     # 研究値: 25 N·m
-                ".*_elbow_pitch_joint": 25,      # 研究値: 25 N·m
-                ".*_elbow_roll_joint": 25,       # 研究値: 25 N·m
-                ".*_five_joint": 2,                # Finger joints は情報なし
-                ".*_three_joint": 2,               # Finger joints は情報なし
-                ".*_six_joint": 2,                 # Finger joints は情報なし
-                ".*_four_joint": 2,                # Finger joints は情報なし
-                ".*_zero_joint": 2,                # Finger joints は情報なし
-                ".*_one_joint": 2,                 # Finger joints は情報なし
-                ".*_two_joint": 2,                 # Finger joints は情報なし
+            effort_limit={
+                ".*_shoulder_pitch_joint": 25,
+                ".*_shoulder_roll_joint": 25,
+                ".*_shoulder_yaw_joint": 25,
+                ".*_elbow_joint": 25,
+                ".*_wrist_roll_joint": 5,
+                ".*_wrist_pitch_joint": 5,
+                ".*_wrist_yaw_joint": 5
             },
-            velocity_limit={  # 肩・肘関節は研究情報に基づいて更新、その他は変更なし
-                ".*_shoulder_pitch_joint": 37,   # 研究値: 37 rad/s
-                ".*_shoulder_roll_joint": 37,    # 研究値: 37 rad/s
-                ".*_shoulder_yaw_joint": 37,     # 研究値: 37 rad/s
-                ".*_elbow_pitch_joint": 37,      # 研究値: 37 rad/s
-                ".*_elbow_roll_joint": 37,       # 研究値: 37 rad/s
-                ".*_five_joint": 0.2,                # Finger joints は情報なし
-                ".*_three_joint": 0.2,               # Finger joints は情報なし
-                ".*_six_joint": 0.2 ,                # Finger joints は情報なし
-                ".*_four_joint": 0.2,                # Finger joints は情報なし
-                ".*_zero_joint": 0.2,                # Finger joints は情報なし
-                ".*_one_joint": 0.2,                 # Finger joints は情報なし
-                ".*_two_joint": 0.2,                 # Finger joints は情報なし
+            velocity_limit={
+                ".*_shoulder_pitch_joint": 37,
+                ".*_shoulder_roll_joint": 37,
+                ".*_shoulder_yaw_joint": 37,
+                ".*_elbow_joint": 37,
+                ".*_wrist_roll_joint": 1.0,
+                ".*_wrist_pitch_joint": 1.0,
+                ".*_wrist_yaw_joint": 1.0
             },
-            stiffness={  # 肩・肘関節は研究情報に基づいて更新、その他は変更なし
-                ".*_shoulder_pitch_joint": 20,   
-                ".*_shoulder_roll_joint": 20,    
-                ".*_shoulder_yaw_joint": 20,    
-                ".*_elbow_pitch_joint": 20,      
-                ".*_elbow_roll_joint": 20,       
-                ".*_five_joint": 1,           
-                ".*_three_joint": 1,            
-                ".*_six_joint": 1 ,               
-                ".*_four_joint": 1,              
-                ".*_zero_joint": 1,               
-                ".*_one_joint": 1,                 
-                ".*_two_joint": 1,                 
+            stiffness={
+                ".*_shoulder_pitch_joint": 20,
+                ".*_shoulder_roll_joint": 20,
+                ".*_shoulder_yaw_joint": 20,
+                ".*_elbow_joint": 20,
+                ".*_wrist_roll_joint": 5,
+                ".*_wrist_pitch_joint": 5,
+                ".*_wrist_yaw_joint": 5
             },
-            damping=3.0,    # 変更なし
+            damping=3.0,
             armature={
-                ".*_shoulder_.*": 0.01,  # 研究値: 0.01
-                ".*_elbow_.*": 0.01,     # 研究値: 0.01
-                ".*_five_joint": 0.001,  # 変更なし（情報がない）
-                ".*_three_joint": 0.001, # 変更なし（情報がない）
-                ".*_six_joint": 0.001,   # 変更なし（情報がない）
-                ".*_four_joint": 0.001,  # 変更なし（情報がない）
-                ".*_zero_joint": 0.001,  # 変更なし（情報がない）
-                ".*_one_joint": 0.001,   # 変更なし（情報がない）
-                ".*_two_joint": 0.001,   # 変更なし（情報がない）
+                ".*_shoulder_.*": 0.01,
+                ".*_elbow_joint": 0.01,
+                ".*_wrist_roll_joint": 0.001,
+                ".*_wrist_pitch_joint": 0.001,
+                ".*_wrist_yaw_joint": 0.001
             },
-            friction={  # 肩・肘関節の摩擦係数を研究情報に基づいて追加、その他は情報なし
-                ".*_shoulder_pitch_joint": 0.1,  # 研究値: 0.1
-                ".*_shoulder_roll_joint": 0.1,   # 研究値: 0.1
-                ".*_shoulder_yaw_joint": 0.1,    # 研究値: 0.1
-                ".*_elbow_pitch_joint": 0.1,     # 研究値: 0.1
-                ".*_elbow_roll_joint": 0.1,      # 研究値: 0.1
-                ".*_five_joint": 0.1,              # Finger joints は情報なし
-                ".*_three_joint": 0.1,             # Finger joints は情報なし
-                ".*_six_joint": 0.1,               # Finger joints は情報なし
-                ".*_four_joint": 0.1,              # Finger joints は情報なし
-                ".*_zero_joint": 0.1,              # Finger joints は情報なし
-                ".*_one_joint": 0.1,               # Finger joints は情報なし
-                ".*_two_joint": 0.1,               # Finger joints は情報なし
+            friction={
+                ".*_shoulder_pitch_joint": 0.1,
+                ".*_shoulder_roll_joint": 0.1,
+                ".*_shoulder_yaw_joint": 0.1,
+                ".*_elbow_joint": 0.1,
+                ".*_wrist_roll_joint": 0.05,
+                ".*_wrist_pitch_joint": 0.05,
+                ".*_wrist_yaw_joint": 0.05
             },
         ),
     },

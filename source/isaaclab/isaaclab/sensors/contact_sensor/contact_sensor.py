@@ -317,6 +317,9 @@ class ContactSensor(SensorBase):
 
     def _initialize_impl(self):
         super()._initialize_impl()
+        # 初期化時に_is_outdated属性が存在しない場合は作成する
+        if not hasattr(self, "_is_outdated"):
+            self._is_outdated = torch.ones(self._num_envs, dtype=torch.bool, device=self._device)
         # create simulation view
         self._physics_sim_view = physx.create_simulation_view(self._backend)
         self._physics_sim_view.set_subspace_roots("/")

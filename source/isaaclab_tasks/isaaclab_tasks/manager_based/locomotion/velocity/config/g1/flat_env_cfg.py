@@ -41,6 +41,24 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
         self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
         self.commands.base_velocity.ranges.heading = (0.0, 0.0)
 
+        # # Rewards
+        # self.rewards.joint_deviation_arms = SceneEntityCfg(
+        #     func=g1_rewards.joint_deviation_l1,
+        #     weight=-0.03,  # 論文中の-0.05から調整
+        #     params={"asset_cfg": SceneEntityCfg(
+        #         name="robot",
+        #         joint_names=[".*_shoulder_roll_joint", ".*_shoulder_yaw_joint", ".*_elbow_joint"]  # 修正: pitchとrollを削除
+        #     )},
+        # )
+        # self.rewards.joint_deviation_hip = SceneEntityCfg(
+        #     func=g1_rewards.joint_deviation_l1,
+        #     weight=-0.03,
+        #     params={"asset_cfg": SceneEntityCfg(
+        #         name="robot",
+        #         joint_names=[".*_hip_.*"]
+        #     )},
+        # )
+
 
 class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
     def __post_init__(self) -> None:

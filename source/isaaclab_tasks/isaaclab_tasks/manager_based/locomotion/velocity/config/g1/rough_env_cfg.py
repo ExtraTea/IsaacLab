@@ -18,148 +18,95 @@ from isaaclab_assets import G1_CUSTOM_CFG  # isort: skip
 
 @configclass
 class G1Rewards(RewardsCfg):
-    """Reward terms for the MDP according to the paper 'Revisiting Reward Design and Evaluation for 
-    Robust Humanoid Standing and Walking'. This reward function implements a minimal set of constraints
-    to achieve robust standing and walking behaviors."""
+    """Reward terms for the MDP, simplified for robust standing and walking behaviors."""
 
     # Termination penalty for falling
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-20.0)
-    
-    # Implementation of the paper's reward functions (preserving existing comments)
-    
-    # 1. XY velocity tracking (weight: 0.15 for x, 0.15 for y)
-    # The paper uses: exp(-5 * ||v_xy - c_xy||^2) or exp(-5 * ||w_xy - c_xy||) depending on yaw commands
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-60.0)
+
+    # 1. XY velocity tracking
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=0.3,  # Combined weight for x and y (0.15 + 0.15)
-        params={"command_name": "base_velocity", "std": 0.5},  # std = sqrt(1/5) ≈ 0.447 to match paper
+        weight=0.5, # Increased weight
+        params={"command_name": "base_velocity", "std": 0.5},
     )
-    
-    # 2. Yaw orientation tracking (weight: 0.1)
-    # The paper uses: exp(-300 * qd(q_yaw, c_yaw))
+
+    # 2. Yaw orientation tracking
     track_ang_vel_z_exp = RewTerm(
-        func=mdp.track_ang_vel_z_world_exp, 
-        weight=0.1,
-        params={"command_name": "base_velocity", "std": 0.058},  # std = sqrt(1/300) ≈ 0.058 to match paper
+        func=mdp.track_ang_vel_z_world_exp,
+        weight=0.2, # Increased weight
+        params={"command_name": "base_velocity", "std": 0.058},
     )
-    
-    # 3. Roll and pitch orientation maintenance (weight: 0.2)
-    # The paper uses: exp(-30 * qd(q_rp, c_rp))
-    torso_link_flat_orientation = RewTerm(
-        func=mdp.flat_orientation_l2,
-        weight=-0.2,  # Changed to negative as this is a penalty for non-flat orientation
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["torso_link", "right_ankle_roll_link", "left_ankle_roll_link"])},
-    )
-    
-    # 4. Feet contact state (weight: 0.1)
-    # The paper rewards having one foot on the ground during walking
-    feet_contact_state = RewTerm(
-        func=mdp.feet_contact,
-        weight=0.1,
-        params={
-            "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
-            "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
-        }
-    )
-    
-    # 5. Base height maintenance (weight: 0.05)
-    # The paper uses: exp(-20 * |p_z - c_h|)
+
+    # 3. Base height maintenance
     pelvis_height = RewTerm(
         func=mdp.track_height_diff,
-        weight=0.1,
+        weight=0.2, # Increased weight
         params={
             "link_name": "pelvis",
-            "height": 0.7,
-            "std": 0.05  # std = sqrt(1/20) ≈ 0.22 to match paper
+            "height": 0.65,
+            "std": 0.01
         }
     )
-    
-    # 6. Feet airtime (weight: 1.0)
-    # The paper rewards having longer airtime for feet during walking with a penalty on touchdown
-    # 静止コマンド (c_s) が偽の場合: Σ (t_air,f - 0.4 * 1_td,f) for f in {left, right}
-    # 静止コマンド (c_s) が真の場合: 1 (定数)
-    # feet_airtime = RewTerm(
-    #     func=mdp.feet_airtime_reward,
-    #     weight=1.0,
-    #     params={
-    #         "command_name": "base_velocity",
-    #         "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
-    #         "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
-    #         "standing_velocity_threshold": 0.1 
-    #     }
-    # )
-    
-    # 7. Feet orientation (weight: 0.05)
-    # 足の向きが骨盤の向きと一致することを報酬として与える
-    feet_orientation = RewTerm(
-        func=mdp.align_link_orientations,
-        weight=0.05,  # 正の値に変更（向きが一致するほど報酬が高い）
+
+    # 4. Upright posture
+    upright_posture = RewTerm(
+        func=mdp.upright_posture,
+        weight=0.3, # New term, replaces torso_link_flat_orientation and torso_pelvis_alignment
         params={
-            "base_link_name": "pelvis",
-            "target_link_names": ["right_ankle_roll_link", "left_ankle_roll_link"],
-            "rot_eps": 0.1  # 向きの差異に対する許容度
+            "link_names": ["pelvis", "torso_link"],
+            "up_vector": [0, 0, 1],
+            "rot_eps": 0.05,
         },
     )
-    
-    # 8. Feet position (weight: 0.05)
-    # The paper constrains foot positions during standing
-    # 9. Arm position (weight: 0.03)
-    # The paper encourages arms to maintain a natural position
-    joint_deviation_arms = RewTerm(
+
+    # 5. Alternating foot movement
+    alternating_foot_movement = RewTerm(
+        func=mdp.alternating_foot_movement,
+        weight=0.3, # Increased weight, replaces feet_contact_state, foot_position_balance, feet_periodic_pattern
+        params={
+            "left_sensor_cfg": SceneEntityCfg("contact_forces", body_names="left_ankle_roll_link"),
+            "right_sensor_cfg": SceneEntityCfg("contact_forces", body_names="right_ankle_roll_link"),
+        },
+    )
+
+    # 6. Slip prevention
+    feet_slide = RewTerm(
+        func=mdp.feet_slide,
+        weight=-0.5, # Adjusted weight
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+        },
+    )
+
+    # 7. Joint deviation for main joints (arms and hips)
+    joint_deviation_main_joints = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.03,  # Changed to negative as this is a penalty for deviation
+        weight=-0.1, # Consolidated and adjusted weight
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
-                    ".*_shoulder_pitch_joint",
                     ".*_shoulder_roll_joint",
                     ".*_shoulder_yaw_joint",
-                    ".*_elbow_pitch_joint",
-                    ".*_elbow_roll_joint",
+                    ".*_elbow_joint",
+                    ".*_hip_yaw_joint",
+                    ".*_hip_roll_joint",
+                    ".*_hip_pitch_joint", # Added hip pitch for overall hip stability
+                    "waist_yaw_joint",
+                    "waist_roll_joint",
+                    "waist_pitch_joint",
                 ],
             )
         },
     )
-    
-    # 10. Base acceleration (weight: 0.1)
-    # The paper penalizes sudden accelerations for smoother motion
-    # lin_vel_z_l2 = RewTerm(
-    #     func=mdp.lin_vel_z_l2,
-    #     weight=-0.1,  # Changed to negative as this is a penalty for z-velocity
-    #     params={"asset_cfg": SceneEntityCfg("robot")}
-    # )
-    
-    # 11. Action difference (weight: 0.02)
-    # The paper penalizes large action changes between timesteps
-    # action_rate_l2 = RewTerm(
-    #     func=mdp.action_rate_l2,
-    #     weight=-0.02,  # Changed to negative as this is a penalty for action changes
-    # )
-    
-    # 12. Torque (weight: 0.02)
-    # The paper penalizes high torque usage for energy efficiency
-    # dof_torques_l2 = RewTerm(
-    #     func=mdp.joint_torques_l2,
-    #     weight=-0.02,  # Changed to negative as this is a penalty for high torque
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
-    #         )
-    #     }
-    # )
-    
-    # 13. Slip prevention (weight: 0.1)
-    # This is additional to ensure feet don't slip when in contact with the ground
-    # feet_slide = RewTerm(
-    #     func=mdp.feet_slide,
-    #     weight=-0.4,  # Changed to negative as this is a penalty for feet sliding
-    #     params={
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
-    #     },
-    # )
+
+    # 8. Base Z-axis acceleration (for smoother motion)
+    lin_vel_z_l2 = RewTerm(
+        func=mdp.lin_vel_z_l2,
+        weight=-0.05, # Adjusted weight
+        params={"asset_cfg": SceneEntityCfg("robot")}
+    )
 
 @configclass
 class G1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
@@ -209,7 +156,7 @@ class G1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
 
         # terminations
-        self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
+        self.terminations.base_contact.params["sensor_cfg"].body_names = ["torso_link", "pelvis", "left_hip_pitch_link", "left_hip_roll_link", "left_hip_yaw_link", "left_knee_link", "right_hip_pitch_link", "right_hip_roll_link", "right_hip_yaw_link", "right_knee_link", "waist_yaw_link", "waist_roll_link", "left_shoulder_pitch_link", "left_shoulder_roll_link", "left_shoulder_yaw_link", "left_elbow_link", "left_wrist_roll_link", "left_wrist_pitch_link", "left_wrist_yaw_link", "right_shoulder_pitch_link", "right_shoulder_roll_link", "right_shoulder_yaw_link", "right_elbow_link", "right_wrist_roll_link", "right_wrist_pitch_link", "right_wrist_yaw_link"]
 
 
 @configclass

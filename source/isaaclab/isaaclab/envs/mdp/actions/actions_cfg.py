@@ -93,6 +93,19 @@ class JointEffortActionCfg(JointActionCfg):
 
     class_type: type[ActionTerm] = joint_actions.JointEffortAction
 
+@configclass
+class JointRVCPositionActionCfg(JointActionCfg):
+    """Configuration for the joint RVC position action term."""
+
+    class_type: type[ActionTerm] = joint_actions.JointRVCPositionAction
+
+    use_default_offset: bool = True
+    """Whether to use default joint positions configured in the articulation asset as offset.
+    Defaults to True.
+
+    This overrides the settings from :attr:`offset` if set to True.
+    """
+
 
 ##
 # Joint actions rescaled to limits.
