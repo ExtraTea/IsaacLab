@@ -391,18 +391,18 @@ class JointRVCPositionAction(JointAction):
             print(left_foot_velocity[left_foot_only])
             print("Left foot body link linear velocity:")
             print(asset.data.body_link_lin_vel_w[left_foot_only, left_foot_id, :])
-            # print("Position of all joints:")
-            # print(asset.data.joint_pos[left_foot_only])
-            # print("name of all joints:")
-            # print(asset.data.joint_names)
-            # print("velocity and angle velocity of base link; pelvis:")
-            # print(asset.data.body_link_vel_w[left_foot_only, 0, :])
-            # print("position of base link; pelvis:")
-            # print(asset.data.body_link_pos_w[left_foot_only, 0, :])
-            # print("posture of base link; pelvis:")
-            # print(asset.data.body_link_quat_w[left_foot_only, 0, :])
-            # print("COG jacobian matrix:")
-            # print(single_left_jacobian_com[left_foot_only])
+            print("Position of all joints:")
+            print(asset.data.joint_pos[left_foot_only][0])
+            print("name of all joints:")
+            print(asset.data.joint_names)
+            print("velocity and angle velocity of base link; pelvis:")
+            print(asset.data.body_link_vel_w[left_foot_only, 0, :][0])
+            print("position of base link; pelvis:")
+            print(asset.data.body_link_pos_w[left_foot_only, 0, :][0])
+            print("posture of base link; pelvis:")
+            print(asset.data.body_link_quat_w[left_foot_only, 0, :][0])
+            print("COG jacobian matrix:")
+            print(single_left_jacobian_com[left_foot_only][0])
 
         # Calculate right foot standing Jacobian for environments where needed
         if right_foot_only.any():
@@ -442,25 +442,28 @@ class JointRVCPositionAction(JointAction):
             right_foot_jacobian = updated_jacobian[:, right_foot_id, :, :]
             
             U, sigma, Vh = torch.linalg.svd(right_foot_jacobian)
+            V_2 = Vh.transpose(1, 2)[:,:,6:]
             # ファイルに全要素を出力する設定
-            # log_path = "/home/daisuke/Downloads/svd_debug.txt"
-            # with open(log_path, "a") as f:
-            #     f.write("=== SVD Debug ===\n")
-            #     f.write("Right foot Jacobian:\n")
-            #     f.write(np.array2string(
-            #         right_foot_jacobian.detach().cpu().numpy(),
-            #         threshold=np.inf,  # 全要素を省略なしで出力
-            #         max_line_width=200
-            #     ) + "\n\n")
-            #     f.write("SVD U matrix:\n")
-            #     f.write(np.array2string(U.detach().cpu().numpy(), threshold=np.inf, max_line_width=200) + "\n\n")
-            #     f.write("SVD sigma values:\n")
-            #     f.write(np.array2string(sigma.detach().cpu().numpy(), threshold=np.inf, max_line_width=200) + "\n\n")
-            #     f.write("SVD Vh matrix:\n")
-            #     f.write(np.array2string(Vh.detach().cpu().numpy(), threshold=np.inf, max_line_width=200) + "\n\n")
+            log_path = "/home/daisuke/Downloads/svd_debug.txt"
+            with open(log_path, "a") as f:
+                f.write("=== SVD Debug ===\n")
+                f.write("Right foot Jacobian:\n")
+                f.write(np.array2string(
+                    right_foot_jacobian[double_support].detach().cpu().numpy(),
+                    threshold=np.inf,  # 全要素を省略なしで出力
+                    max_line_width=200
+                ) + "\n\n")
+                f.write("SVD U matrix:\n")
+                f.write(np.array2string(U[double_support].detach().cpu().numpy(), threshold=np.inf, max_line_width=200) + "\n\n")
+                f.write("SVD sigma values:\n")
+                f.write(np.array2string(sigma[double_support].detach().cpu().numpy(), threshold=np.inf, max_line_width=200) + "\n\n")
+                f.write("SVD Vh matrix:\n")
+                f.write(np.array2string(Vh[double_support].detach().cpu().numpy(), threshold=np.inf, max_line_width=200) + "\n\n")
+                f.write("V_2 matrix:\n")
+                f.write(np.array2string(V_2[double_support].detach().cpu().numpy(), threshold=np.inf, max_line_width=200) + "\n\n")
 
             # raise ValueError("SVD failed to converge")
-            V_2 = Vh.transpose(1, 2)[:,:,6:]
+            
             double_foot_jacobian_com = single_left_jacobian_com @ V_2
             phi2 = V_2.transpose(1, 2) @ asset.data.joint_vel.unsqueeze(-1)
             print("V2")
@@ -471,22 +474,22 @@ class JointRVCPositionAction(JointAction):
             # Apply to the appropriate environments
             computed_velocity[double_support] = double_support_velocity[double_support]
             
-            print("Double support computed velocity:")
-            print(double_support_velocity[double_support])
-            print("Double support body link linear velocity:")
-            print(asset.data.body_link_lin_vel_w[double_support, left_foot_id, :])
-            print("Position of all joints:")
-            print(asset.data.joint_pos[double_support])
-            print("name of all joints:")
-            print(asset.data.joint_names)
-            print("velocity and angle velocity of base link; pelvis:")
-            print(asset.data.body_link_vel_w[double_support, 0, :])
-            print("position of base link; pelvis:")
-            print(asset.data.body_link_pos_w[double_support, 0, :])
-            print("posture of base link; pelvis:")
-            print(asset.data.body_link_quat_w[double_support, 0, :])
-            print("COG jacobian matrix:")
-            print(double_foot_jacobian_com[double_support])
+            # print("Double support computed velocity:")
+            # print(double_support_velocity[double_support])
+            # print("Double support body link linear velocity:")
+            # print(asset.data.body_link_lin_vel_w[double_support, left_foot_id, :])
+            # print("Position of all joints:")
+            # print(asset.data.joint_pos[double_support])
+            # print("name of all joints:")
+            # print(asset.data.joint_names)
+            # print("velocity and angle velocity of base link; pelvis:")
+            # print(asset.data.body_link_vel_w[double_support, 0, :])
+            # print("position of base link; pelvis:")
+            # print(asset.data.body_link_pos_w[double_support, 0, :])
+            # print("posture of base link; pelvis:")
+            # print(asset.data.body_link_quat_w[double_support, 0, :])
+            # print("COG jacobian matrix:")
+            # print(double_foot_jacobian_com[double_support])
 
         # For environments with no support, we can use the original Jacobian
         if no_support.any():

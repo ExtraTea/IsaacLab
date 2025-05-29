@@ -67,7 +67,7 @@ agent:
   mini_batches: 4
   discount_factor: 0.99
   lambda: 0.95
-  learning_rate: 5.0e-04  # LSTMに対して少し低めの学習率を設定
+  learning_rate: 2.0e-04  # LSTMに対して少し低めの学習率を設定
   learning_rate_scheduler: KLAdaptiveLR
   learning_rate_scheduler_kwargs:
     kl_threshold: 0.01
